@@ -67,7 +67,17 @@ mkdir -p $DATA_DIR/cl_sft
 # Option B: Download from HuggingFace dataset
 if [ ! -f "$DATA_DIR/books_id2meta.json" ]; then
     echo "  Downloading from HuggingFace..."
-    huggingface-cli download JazyJiang/grlm-books-cl-data --local-dir $DATA_DIR --repo-type dataset
+    huggingface-cli download JazySong/grlm-books-cl-data --local-dir $DATA_DIR --repo-type dataset
+    # Extract compressed CL SFT data
+    if [ -f "$DATA_DIR/cl_sft.tar.gz" ]; then
+        echo "  Extracting cl_sft.tar.gz..."
+        tar xzf $DATA_DIR/cl_sft.tar.gz -C $DATA_DIR/cl_sft
+        rm -f $DATA_DIR/cl_sft.tar.gz
+    fi
+    # D0 train is same for all caps (no prior history), create symlinks
+    for cap in h2 h5 h10 h20 h30 h40; do
+        ln -sf amazon_books_cl_D0_train.json $DATA_DIR/cl_sft/amazon_books_cl_D0_train_${cap}.json
+    done
 fi
 
 # Check if data exists
@@ -75,7 +85,7 @@ if [ ! -f "$DATA_DIR/books_id2meta.json" ]; then
     echo ""
     echo "ERROR: Data not found at $DATA_DIR/"
     echo "Please ensure you have access to the HuggingFace dataset:"
-    echo "  huggingface-cli download JazyJiang/grlm-books-cl-data --local-dir $DATA_DIR --repo-type dataset"
+    echo "  huggingface-cli download JazySong/grlm-books-cl-data --local-dir $DATA_DIR --repo-type dataset"
     echo ""
     exit 1
 fi
