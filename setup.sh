@@ -64,15 +64,17 @@ mkdir -p $DATA_DIR/cl_sft
 # cp $SRC/in_domain/books/sum_data/item_id2tid/books_tid2item_id.json $DATA_DIR/
 # cp $SRC/LlamaFactory/data/grlm_in_domain/amazon_books_cl_*.json $DATA_DIR/cl_sft/
 
-# Option A: Download from Google Drive (link shared separately)
-#   Download grlm_cl_data.tar.gz, books_id2meta.json, books_tid2item_id.json
-#   and place them in $DATA_DIR/, then run this script.
+# Option B: Download from HuggingFace
+if [ ! -f "$DATA_DIR/books_id2meta.json" ]; then
+    echo "  Downloading data from HuggingFace..."
+    huggingface-cli download JazySong/grlm-books-cl-data --local-dir $DATA_DIR --repo-type dataset
+fi
 
 # Auto-extract if tar.gz exists
-if [ -f "$DATA_DIR/grlm_cl_data.tar.gz" ]; then
-    echo "  Extracting grlm_cl_data.tar.gz..."
-    tar xzf $DATA_DIR/grlm_cl_data.tar.gz -C $DATA_DIR/cl_sft
-    rm -f $DATA_DIR/grlm_cl_data.tar.gz
+if [ -f "$DATA_DIR/cl_sft.tar.gz" ]; then
+    echo "  Extracting cl_sft.tar.gz..."
+    tar xzf $DATA_DIR/cl_sft.tar.gz -C $DATA_DIR/cl_sft
+    rm -f $DATA_DIR/cl_sft.tar.gz
 fi
 
 # D0 train is same for all caps (no prior history), create symlinks
@@ -86,10 +88,8 @@ fi
 if [ ! -f "$DATA_DIR/books_id2meta.json" ]; then
     echo ""
     echo "ERROR: Data not found at $DATA_DIR/"
-    echo "Please download data from the shared Google Drive link and place:"
-    echo "  $DATA_DIR/books_id2meta.json"
-    echo "  $DATA_DIR/books_tid2item_id.json"
-    echo "  $DATA_DIR/grlm_cl_data.tar.gz  (will be auto-extracted to cl_sft/)"
+    echo "Please ensure you have access to the HuggingFace dataset:"
+    echo "  huggingface-cli download JazySong/grlm-books-cl-data --local-dir $DATA_DIR --repo-type dataset"
     echo ""
     exit 1
 fi
