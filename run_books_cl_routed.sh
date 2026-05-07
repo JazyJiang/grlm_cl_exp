@@ -78,11 +78,13 @@ for PERIOD in 0 1 2 3; do
 
     # Train with routing
     WANDB_DISABLED=true DISABLE_VERSION_CHECK=1 \
+    PYTHONPATH=${WORK_DIR}:$PYTHONPATH \
     CUDA_VISIBLE_DEVICES=$GPU_IDS python3 -m routing.train_with_routing \
         --model_name_or_path $INIT_MODEL \
         --do_train \
         --dataset $DATASET_NAME \
-        --template qwen3 \
+        --dataset_dir ${LLAMA_DIR}/data \
+        --template qwen3_nothink \
         --finetuning_type full \
         --output_dir $OUTPUT_DIR \
         --overwrite_cache \
