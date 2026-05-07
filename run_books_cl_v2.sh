@@ -10,8 +10,8 @@ MODEL_SIZE=$1
 CAP=$2
 GPU_IDS=$3
 
-LLAMA_DIR="$(cd "$(dirname "$0")" && pwd)"
-WORK_DIR="$(cd "$LLAMA_DIR/.." && pwd)"
+WORK_DIR="$(cd "$(dirname "$0")" && pwd)"
+LLAMA_DIR=${WORK_DIR}/LlamaFactory
 EVAL_SCRIPT=${WORK_DIR}/eval/s5_books_cl_eval_seq.py
 TID2ITEM=${WORK_DIR}/data/books_tid2item_id.json
 ID2META=${WORK_DIR}/data/books_id2meta.json

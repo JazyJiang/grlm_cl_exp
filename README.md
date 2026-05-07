@@ -19,7 +19,6 @@ cd grlm_cl_exp
 bash setup.sh
 
 # 3. Run a single chain (e.g., 0.6B, h=10, GPU 1)
-cd LlamaFactory
 bash run_books_cl_v2.sh 06b h10 1
 
 # 4. Run all chains in parallel (uses GPUs 1-7)

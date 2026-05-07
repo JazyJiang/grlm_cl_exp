@@ -12,8 +12,6 @@ echo "=== Dispatching all CL chains ==="
 echo "Logs: $LOG_DIR/"
 echo ""
 
-cd $LLAMA_DIR
-
 # ============================================================
 # GPU Assignment (7 GPUs available: 1-7)
 # 0.6B: 1 GPU each (7 chains → rotate GPUs)
@@ -30,7 +28,7 @@ for i in "${!CAPS_06B[@]}"; do
     cap=${CAPS_06B[$i]}
     gpu=${GPU_06B[$i]}
     echo "[0.6B ${cap}] → GPU ${gpu}"
-    nohup bash run_books_cl_v2.sh 06b ${cap} ${gpu} \
+    nohup bash ${WORK_DIR}/run_books_cl_v2.sh 06b ${cap} ${gpu} \
         > ${LOG_DIR}/06b_${cap}.log 2>&1 &
 done
 
@@ -50,7 +48,7 @@ for i in "${!CAPS_17B[@]}"; do
     cap=${CAPS_17B[$i]}
     gpu=${GPU_17B[$i]}
     echo "[1.7B ${cap}] → GPU ${gpu}"
-    nohup bash run_books_cl_v2.sh 17b ${cap} ${gpu} \
+    nohup bash ${WORK_DIR}/run_books_cl_v2.sh 17b ${cap} ${gpu} \
         > logs/17b_${cap}.log 2>&1 &
 done
 
@@ -63,7 +61,7 @@ for i in "${!CAPS_4B_BATCH1[@]}"; do
     cap=${CAPS_4B_BATCH1[$i]}
     gpu=${GPU_4B_BATCH1[$i]}
     echo "[4B ${cap}] → GPUs ${gpu}"
-    nohup bash run_books_cl_v2.sh 4b ${cap} ${gpu} \
+    nohup bash ${WORK_DIR}/run_books_cl_v2.sh 4b ${cap} ${gpu} \
         > logs/4b_${cap}.log 2>&1 &
 done
 
@@ -75,7 +73,7 @@ for i in "${!CAPS_4B_BATCH2[@]}"; do
     cap=${CAPS_4B_BATCH2[$i]}
     gpu=${GPU_4B_BATCH2[$i]}
     echo "[4B ${cap}] → GPUs ${gpu}"
-    nohup bash run_books_cl_v2.sh 4b ${cap} ${gpu} \
+    nohup bash ${WORK_DIR}/run_books_cl_v2.sh 4b ${cap} ${gpu} \
         > logs/4b_${cap}.log 2>&1 &
 done
 NEXT_BATCH

@@ -9,15 +9,13 @@ LLAMA_DIR=${WORK_DIR}/LlamaFactory
 LOG_DIR=${WORK_DIR}/logs
 mkdir -p $LOG_DIR
 
-cd $LLAMA_DIR
-
 run_chain() {
     local gpu=$1
     local cap=$2
     echo "[GPU ${gpu}] Starting 06b ${cap}..."
-    bash run_books_cl_v2.sh 06b ${cap} ${gpu}
+    bash ${WORK_DIR}/run_books_cl_v2.sh 06b ${cap} ${gpu}
     echo "[GPU ${gpu}] Starting 17b ${cap}..."
-    bash run_books_cl_v2.sh 17b ${cap} ${gpu}
+    bash ${WORK_DIR}/run_books_cl_v2.sh 17b ${cap} ${gpu}
     echo "[GPU ${gpu}] Done with cap=${cap}"
 }
 
@@ -28,7 +26,7 @@ for i in "${!CAPS[@]}"; do
     gpu=$((i + 1))
     cap=${CAPS[$i]}
     echo "Launching GPU ${gpu} → cap=${cap} (06b + 17b)"
-    nohup bash -c "cd ${LLAMA_DIR} && bash run_books_cl_v2.sh 06b ${cap} ${gpu} && bash run_books_cl_v2.sh 17b ${cap} ${gpu}" \
+    nohup bash -c "bash ${WORK_DIR}/run_books_cl_v2.sh 06b ${cap} ${gpu} && bash ${WORK_DIR}/run_books_cl_v2.sh 17b ${cap} ${gpu}" \
         > ${LOG_DIR}/gpu${gpu}_${cap}.log 2>&1 &
 done
 
@@ -38,7 +36,7 @@ echo "Each GPU handles: 0.6B then 1.7B for one cap value."
 echo "Estimated time: ~10-16h per GPU."
 echo ""
 echo "After these finish, run 4B chains (2 GPUs each):"
-echo "  bash run_books_cl_v2.sh 4b h2 1,2"
-echo "  bash run_books_cl_v2.sh 4b h5 3,4"
-echo "  bash run_books_cl_v2.sh 4b h10 5,6"
+echo "  bash ${WORK_DIR}/run_books_cl_v2.sh 4b h2 1,2"
+echo "  bash ${WORK_DIR}/run_books_cl_v2.sh 4b h5 3,4"
+echo "  bash ${WORK_DIR}/run_books_cl_v2.sh 4b h10 5,6"
 echo "  (then h20, h30, h40, full in next batch)"

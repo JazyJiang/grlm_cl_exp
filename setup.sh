@@ -108,10 +108,7 @@ mkdir -p ${WORK_DIR}/checkpoints
 # Link data into LlamaFactory expected locations
 ln -sfn $DATA_DIR/cl_sft $LLAMA_DIR/data/grlm_in_domain 2>/dev/null || true
 
-# Copy run script into LlamaFactory (it auto-detects paths relative to itself)
-cp ${WORK_DIR}/run_books_cl_v2.sh $LLAMA_DIR/run_books_cl_v2.sh
-
 echo ""
 echo "=== Setup Complete ==="
-echo "To run a single chain:  cd LlamaFactory && bash run_books_cl_v2.sh 06b h10 1"
+echo "To run a single chain:  bash run_books_cl_v2.sh 06b h10 1"
 echo "To run all chains:      bash dispatch_all.sh"
