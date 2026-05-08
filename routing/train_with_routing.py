@@ -127,6 +127,22 @@ def main():
 
     CustomSeq2SeqTrainer.compute_loss = _compute_loss_with_aux
 
+    # Step 2b: Monkey-patch save_model to remove aux head before saving
+    # (safetensors doesn't support cross-module weight tying with _aux_head)
+    _original_save_model = CustomSeq2SeqTrainer.save_model
+
+    def _save_model_without_aux(self, output_dir=None, **kwargs):
+        model = self.model
+        aux_head = None
+        if hasattr(model, "_aux_head"):
+            aux_head = model._aux_head
+            del model._modules["_aux_head"]
+        _original_save_model(self, output_dir, **kwargs)
+        if aux_head is not None:
+            model.add_module("_aux_head", aux_head)
+
+    CustomSeq2SeqTrainer.save_model = _save_model_without_aux
+
     # Step 3: Monkey-patch load_model to attach aux head after loading
     from llamafactory.model import loader as _loader
     _original_load_model = _loader.load_model
