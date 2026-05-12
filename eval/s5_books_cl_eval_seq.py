@@ -8,6 +8,7 @@ Recall@K = fraction of (user, target) pairs where target is in top-K.
 import re
 import os
 import json
+import math
 import random
 import argparse
 import numpy as np
@@ -98,6 +99,7 @@ def process_single_gpu(rank, data_slice, output_queue, model_name, batch_size,
         model_name, torch_dtype=torch.float16, device_map=f"cuda:{rank}"
     )
     model.eval()
+    batch_size = min(batch_size, 8)
     print(f"Rank {rank}: Processing {len(data_slice)} users, batch_size={batch_size}")
 
     INSTRUCTION = (
@@ -153,11 +155,19 @@ def process_single_gpu(rank, data_slice, output_queue, model_name, batch_size,
         ).to(model.device)
 
         with torch.no_grad():
-            generated_ids = model.generate(
-                **model_inputs, max_new_tokens=30, do_sample=False,
-                num_beams=20, num_return_sequences=20,
-                pad_token_id=tokenizer.eos_token_id,
-            )
+            try:
+                generated_ids = model.generate(
+                    **model_inputs, max_new_tokens=30, do_sample=False,
+                    num_beams=20, num_return_sequences=20,
+                    pad_token_id=tokenizer.eos_token_id,
+                )
+            except torch.cuda.OutOfMemoryError:
+                torch.cuda.empty_cache()
+                for state in batch_states:
+                    state["target_idx"] += 1
+                    pbar.update(1)
+                user_states = [s for s in user_states if s["target_idx"] < len(s["target_ids"])]
+                continue
 
         num_seqs = generated_ids.shape[0] // len(batch_states)
 
@@ -316,6 +326,17 @@ def main():
         "recall@20": all_hits[19] / all_total if all_total > 0 else 0,
     }
 
+    # Compute NDCG
+    all_ndcg = {5: 0.0, 10: 0.0, 20: 0.0}
+    for r in all_results:
+        if r["hit_pos"] > 0:
+            for k in [5, 10, 20]:
+                if r["hit_pos"] <= k:
+                    all_ndcg[k] += 1.0 / math.log2(r["hit_pos"] + 1)
+    recall["NDCG@5"] = all_ndcg[5] / all_total if all_total > 0 else 0
+    recall["NDCG@10"] = all_ndcg[10] / all_total if all_total > 0 else 0
+    recall["NDCG@20"] = all_ndcg[20] / all_total if all_total > 0 else 0
+
     hist_tag = f"h{args.max_hist}" if args.max_hist else "hfull"
     print(f"\n{'='*50}")
     print(f"Sequential CL Eval ({hist_tag}, {all_total} pairs, {elapsed:.0f}s)")
@@ -348,6 +369,15 @@ def main():
             "recall@10": g_hits[9] / g_total if g_total > 0 else 0,
             "recall@20": g_hits[19] / g_total if g_total > 0 else 0,
         }
+        g_ndcg = {5: 0.0, 10: 0.0, 20: 0.0}
+        for r in group_data:
+            if r["hit_pos"] > 0:
+                for k in [5, 10, 20]:
+                    if r["hit_pos"] <= k:
+                        g_ndcg[k] += 1.0 / math.log2(r["hit_pos"] + 1)
+        g_recall["NDCG@5"] = g_ndcg[5] / g_total if g_total > 0 else 0
+        g_recall["NDCG@10"] = g_ndcg[10] / g_total if g_total > 0 else 0
+        g_recall["NDCG@20"] = g_ndcg[20] / g_total if g_total > 0 else 0
 
         hist_lens = [r["history_len"] for r in group_data]
         group_results[f"group{g}"] = {

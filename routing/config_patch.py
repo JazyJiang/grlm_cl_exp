@@ -24,4 +24,5 @@ def patch_qwen3_config_for_routing(
         "full_attention" if i == full_layer else "sliding_attention"
         for i in range(n_layers)
     ]
+    config.use_sliding_window = True
     config.sliding_window = sliding_window_size

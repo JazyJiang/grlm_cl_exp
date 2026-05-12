@@ -37,9 +37,6 @@ def enable_aux_head(model: nn.Module, full_layer_idx: int) -> AuxPredictionHead:
     The head's projection shares weights with lm_head (no extra parameters).
     After each forward pass, model._aux_hidden holds the captured hidden states.
 
-    If the model already has an _aux_head (e.g. loaded from checkpoint),
-    it is replaced and the hook is re-registered.
-
     Args:
         model: A Qwen3ForCausalLM (or similar) model.
         full_layer_idx: Index of the full-attention layer to hook.
