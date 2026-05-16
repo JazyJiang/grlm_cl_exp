@@ -67,7 +67,7 @@ bash run_books_cl_routed.sh 06b full 0 512 0.1
 
 History cap 说明：`h10` 表示训练时 user history 截断到最近 10 条，`full` 表示不截断。D0 训练数据对所有 cap 相同（无先验 history）。
 
-> **For Video Games**: VG processed data is **not** auto-downloaded by setup.sh. Either ask the maintainer for a pre-built dump, or run the SID pipeline yourself from `data_prep/` (see [data_prep/README.md](data_prep/README.md)). After preparation, place the artifacts at `data/videogames_id2meta.json`, `data/videogames_tid2item_id.json`, and `data/cl_sft/amazon_videogames_cl_D{0-3}_{train,eval}[_h{cap}].json`, then re-run `python scripts/generate_dataset_info.py --data_dir data/cl_sft --output LlamaFactory/data/dataset_info.json`.
+> **For Video Games**: VG processed data is **not** auto-downloaded by setup.sh. Run the SID pipeline yourself from `data_prep/` (see [data_prep/README.md](data_prep/README.md)). After preparation, place the artifacts at `data/videogames_id2meta.json`, `data/videogames_tid2item_id.json`, and `data/cl_sft/amazon_videogames_cl_D{0-3}_{train,eval}[_h{cap}].json`, then re-run `python scripts/generate_dataset_info.py --data_dir data/cl_sft --output LlamaFactory/data/dataset_info.json`.
 
 
 

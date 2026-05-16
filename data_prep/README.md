@@ -2,14 +2,14 @@
 
 This directory contains the full **Semantic-ID (SID) pipeline** that converts raw Amazon Reviews into the CL SFT JSON files consumed by training. Use this if you want to build a dataset from scratch (e.g. for a new Amazon category) instead of downloading a pre-built dump.
 
-> If you only want to **run baselines**, you can skip this directory and download the pre-built data via `setup.sh` (Books only, for now) or ask the maintainer for a VG dump.
+> If you only want to **run baselines on Books**, you can skip this directory and download the pre-built data via `setup.sh`. For VG (or any new Amazon category), follow the steps below — everything starts from the public McAuley Lab Amazon Reviews v2 dump and is fully reproducible.
 
 ---
 
 ## Pipeline overview
 
 ```
-Amazon raw JSON   --[external memory_dev preprocessing]-->   *_item_map.npy + *_sequential.npy
+Amazon raw JSON   --[memory_dev/scripts/setup_data.sh]-->   *_item_map.npy + *_sequential.npy
                                                                        |
                                                                        v
                                        prepare_<dataset>_data.py    ==> raw_data/{<dataset>.item.json, sequential_data.txt}
@@ -34,11 +34,13 @@ Amazon raw JSON   --[external memory_dev preprocessing]-->   *_item_map.npy + *_
 
 ## External dependencies
 
+The SID pipeline starts from **npy maps** produced by the [memory_dev](https://github.com/JazyJiang/memory_dev) repo (Amazon raw JSON download + temporal split + K-core filtering). You **do not need to write your own preprocessing** — `memory_dev` does that step end-to-end from the public McAuley Lab Amazon Reviews v2 dump.
+
 | Dep | What | Where |
 |-----|------|-------|
-| `memory_dev` repo | Amazon raw JSON → `*_item_map.npy` / `*_title_map.npy` / `*_description_map.npy` / `*_category_map.npy` / sequential split | not in this repo. Ask maintainer or write your own preprocessing matching the npy schema (see `prepare_*_data.py` for fields used) |
+| [`memory_dev`](https://github.com/JazyJiang/memory_dev) | Downloads Amazon raw JSON from McAuley Lab + runs K-core filtering + temporal split → `*_item_map.npy` / `*_title_map.npy` / `*_description_map.npy` / `*_category_map.npy` + per-period sequential data under `data/D{0..3}/`. One command: `bash scripts/setup_data.sh <dataset>` | clone separately, see Step 0 below |
 | `sentence-transformers` model | item-text embedding for s0 | downloaded automatically by `s0_init_emb_st.py` |
-| **Qwen3-4B-Instruct** | LLM keyword summaries for s1 | edit path in `s1_init_sum.py` |
+| **Qwen3-4B-Instruct** | LLM keyword summaries for s1 | edit `model_name` in `s1_init_sum.py` |
 
 ---
 
@@ -64,7 +66,16 @@ After s4 finishes, the CL JSON files land in `LlamaFactory/data/grlm_in_domain/`
 ## Run order (VG example, end-to-end)
 
 ```bash
-# 0. Preprocess Amazon raw -> npy maps (out of scope here, use memory_dev)
+# 0. Preprocess Amazon raw -> npy maps (via memory_dev — fully public, no internal data)
+#    Supported datasets: Toys_and_Games, Video_Games, CDs_and_Vinyl, Books
+git clone git@github.com:JazyJiang/memory_dev.git
+cd memory_dev
+bash scripts/setup_data.sh Video_Games           # downloads + k-core + temporal split
+#   -> produces memory_dev/data/info/Video_Games_5_<time>_*.npy
+#   -> and memory_dev/data/D{0..3}/ sequential splits
+cd ../grlm_cl_exp
+# Then edit MEMORY_DEV constant in data_prep/prepare_videogames_data.py + s4_build_videogames_cl_data.py
+#   to point at ../memory_dev/data  (or wherever you cloned it)
 
 # 1. Build raw_data/ for VG
 python data_prep/prepare_videogames_data.py
