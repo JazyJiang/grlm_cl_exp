@@ -1,7 +1,7 @@
 #!/bin/bash
-# Books CL (Continual Learning) experiment v2
+# Video Games CL (Continual Learning) experiment v2
 # Tiger-style sequential eval (per-target with sliding window)
-# Usage: bash run_books_cl_v2.sh <model_size> <cap> <gpu_ids>
+# Usage: bash run_videogames_cl_v2.sh <model_size> <cap> <gpu_ids>
 #   model_size: 06b, 17b, or 4b
 #   cap: h2, h5, h10, h20, h30, h40, or full
 #   gpu_ids: e.g., 1 (single) or 4,5 (multi for 4B)
@@ -13,10 +13,10 @@ GPU_IDS=$3
 WORK_DIR="$(cd "$(dirname "$0")" && pwd)"
 LLAMA_DIR=${WORK_DIR}/LlamaFactory
 EVAL_SCRIPT=${WORK_DIR}/eval/s5_books_cl_eval_seq.py
-TID2ITEM=${WORK_DIR}/data/books_tid2item_id.json
-ID2META=${WORK_DIR}/data/books_id2meta.json
+TID2ITEM=${WORK_DIR}/data/videogames_tid2item_id.json
+ID2META=${WORK_DIR}/data/videogames_id2meta.json
 EVAL_DIR=${WORK_DIR}/data/cl_sft
-RESULT_DIR=${WORK_DIR}/results/cl_results_seq_books/${MODEL_SIZE}_${CAP}
+RESULT_DIR=${WORK_DIR}/results/cl_results_seq_videogames/${MODEL_SIZE}_${CAP}
 MODEL_DIR=${WORK_DIR}/models
 
 mkdir -p $RESULT_DIR
@@ -63,8 +63,8 @@ fi
 PREV_CKPT=""
 
 for PERIOD in 0 1 2 3; do
-    DATASET_NAME="grlm_indomain_books_cl_D${PERIOD}${DATASET_SUFFIX}"
-    OUTPUT_DIR=${WORK_DIR}/checkpoints/grlm_books_cl_${MODEL_SIZE}_${CAP}_D${PERIOD}
+    DATASET_NAME="grlm_indomain_videogames_cl_D${PERIOD}${DATASET_SUFFIX}"
+    OUTPUT_DIR=${WORK_DIR}/checkpoints/grlm_videogames_cl_${MODEL_SIZE}_${CAP}_D${PERIOD}
 
     # Determine model to start from and learning rate
     if [ "$PERIOD" -eq 0 ]; then
@@ -131,7 +131,7 @@ for PERIOD in 0 1 2 3; do
     echo "[$(date)] Training D${PERIOD} DONE"
 
     # Eval on next period (sequential, Tiger-style)
-    EVAL_FILE=${EVAL_DIR}/amazon_books_cl_D${PERIOD}_eval.json
+    EVAL_FILE=${EVAL_DIR}/amazon_videogames_cl_D${PERIOD}_eval.json
 
     # Eval batch size: larger for shorter history caps (less KV cache)
     if [ "$CAP" == "full" ]; then

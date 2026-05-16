@@ -7,7 +7,7 @@ checkpoints/
 results/
 
 # LlamaFactory clone (downloaded by setup.sh)
-LlamaFactory/
+LlamaFactory
 
 # Logs
 logs/
@@ -20,3 +20,8 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Backup files
+*.bak
+*.orig
+*.swp

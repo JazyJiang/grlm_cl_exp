@@ -19,6 +19,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from tqdm import tqdm
 import time
 
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from safetensors.torch import load_file as _load_safetensors
+
 seed = 42
 random.seed(seed)
 np.random.seed(seed)
@@ -79,7 +83,7 @@ def format_target_item(target_tid, title):
 
 
 def process_single_gpu(rank, data_slice, output_queue, model_name, batch_size,
-                       tid2item_id_path, id2meta_path, max_hist):
+                       tid2item_id_path, id2meta_path, max_hist, pkm_position="parallel"):
     torch.cuda.set_device(rank)
 
     with open(tid2item_id_path, 'r') as f:
@@ -98,6 +102,32 @@ def process_single_gpu(rank, data_slice, output_queue, model_name, batch_size,
     model = AutoModelForCausalLM.from_pretrained(
         model_name, torch_dtype=torch.float16, device_map=f"cuda:{rank}"
     )
+    # PKM injection: detect from checkpoint and load weights
+    import os as _os
+    sf_path = _os.path.join(model_name, "model.safetensors")
+    if _os.path.isfile(sf_path):
+        _sd_full = _load_safetensors(sf_path)
+        _pkm_keys = [k for k in _sd_full if "_pkm_modules" in k]
+        if _pkm_keys:
+            _layer_idxs = sorted(set(int(k.split("layer_")[1].split(".")[0]) for k in _pkm_keys))
+            _vk = next((k for k in _pkm_keys if k.endswith("pkm.values.weight")), None)
+            _n_keys = int(_sd_full[_vk].shape[0] ** 0.5) if _vk else 128
+            from routing.pkm_module import inject_pkm_into_qwen
+            # Auto-detect gate_type from checkpoint keys
+            _gate_type = "scalar"
+            if any(k.endswith("gate_proj.weight") for k in _pkm_keys):
+                _gate_type = "linear"
+            elif any("gate_proj.0.weight" in k or "gate_proj.2.weight" in k for k in _pkm_keys):
+                _gate_type = "mlp"
+            print(f"Rank {rank}: detected PKM gate_type={_gate_type}")
+            inject_pkm_into_qwen(model, _layer_idxs, position=pkm_position,
+                                 n_keys=_n_keys, gate_init=0.0, gate_type=_gate_type)
+            _sd_pkm = {k: v.to(f"cuda:{rank}").to(torch.float16) for k, v in _sd_full.items() if "_pkm_modules" in k}
+            _miss, _unexp = model.load_state_dict(_sd_pkm, strict=False)
+            _gate_keys = [k for k in _sd_full if k.endswith(".gate")]
+            _gate_vals = {k: _sd_full[k].item() for k in _gate_keys}
+            print(f"Rank {rank}: PKM loaded layers={_layer_idxs} pos={pkm_position} n_keys={_n_keys} gate={_gate_vals}")
+        del _sd_full
     model.eval()
     batch_size = min(batch_size, 8)
     print(f"Rank {rank}: Processing {len(data_slice)} users, batch_size={batch_size}")
@@ -264,6 +294,7 @@ def main():
     parser.add_argument('--max_hist', type=int, default=None)
     parser.add_argument('--max_users', type=int, default=None)
     parser.add_argument('--num_gpus', type=int, default=None)
+    parser.add_argument('--pkm_position', type=str, default='parallel')
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--output_dir', type=str, default='./cl_results')
     args = parser.parse_args()
@@ -298,7 +329,7 @@ def main():
         p = mp.Process(
             target=process_single_gpu,
             args=(rank, data_chunks[rank], output_queue, args.model, args.batch_size,
-                  args.tid2item_id, args.id2meta, args.max_hist)
+                  args.tid2item_id, args.id2meta, args.max_hist, args.pkm_position)
         )
         processes.append(p)
         p.start()

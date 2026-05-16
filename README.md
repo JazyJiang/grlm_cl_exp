@@ -1,6 +1,6 @@
 # GRLM-CL: Continual Learning for Generative Recommendation with LLMs
 
-Qwen3-based generative sequential recommender with **Sliding-Window Routing** and **Auxiliary Loss** for continual learning on Amazon Books.
+Qwen3-based generative sequential recommender for continual learning on Amazon (currently **Books** and **Video Games**), with optional **Sliding-Window Routing** + **Auxiliary Loss** and **PKM** memory modules.
 
 ## Quick Start
 
@@ -10,10 +10,14 @@ git clone git@github.com:JazyJiang/grlm_cl_exp.git
 cd grlm_cl_exp
 bash setup.sh
 
-# 2. Run a single baseline experiment
+# 2. Run a single baseline experiment (Books)
 bash run_books_cl_v2.sh 06b h10 0
 
-# 3. Run a routing experiment
+# 3. Run baselines for Video Games (cap = 10/20/30/full)
+#    Requires VG data prepped via data_prep/  (see Section 2.4)
+bash run_videogames_cl_v2.sh 06b h10 0
+
+# 4. Run a routing experiment
 bash run_books_cl_routed.sh 06b full 0 512 0.1
 ```
 
@@ -62,6 +66,10 @@ bash run_books_cl_routed.sh 06b full 0 512 0.1
 | `data/cl_sft/amazon_books_cl_D{0-3}_eval.json` | 各 period 的评估数据 |
 
 History cap 说明：`h10` 表示训练时 user history 截断到最近 10 条，`full` 表示不截断。D0 训练数据对所有 cap 相同（无先验 history）。
+
+> **For Video Games**: VG processed data is **not** auto-downloaded by setup.sh. Either ask the maintainer for a pre-built dump, or run the SID pipeline yourself from `data_prep/` (see [data_prep/README.md](data_prep/README.md)). After preparation, place the artifacts at `data/videogames_id2meta.json`, `data/videogames_tid2item_id.json`, and `data/cl_sft/amazon_videogames_cl_D{0-3}_{train,eval}[_h{cap}].json`, then re-run `python scripts/generate_dataset_info.py --data_dir data/cl_sft --output LlamaFactory/data/dataset_info.json`.
+
+
 
 ---
 
@@ -115,6 +123,25 @@ wait
 - 0.6B 全部 cap: ~4-6h (并行)
 - 1.7B 全部 cap: ~6-10h (并行)
 - 4B 全部 cap: ~10-16h (3-4 组并行，每组 2 卡)
+
+
+### 2.4 Video Games (VG)
+
+VG uses the same training script API, just a different binary. Pre-requisite: VG CL JSON files exist under `data/cl_sft/` (see note in section 1.4).
+
+```bash
+# Single chain (cap=10 on GPU 0)
+bash run_videogames_cl_v2.sh 06b h10 0
+
+# 4 caps in parallel (cap=10/20/30/full)
+bash run_videogames_cl_v2.sh 06b h10  0 &
+bash run_videogames_cl_v2.sh 06b h20  1 &
+bash run_videogames_cl_v2.sh 06b h30  2 &
+bash run_videogames_cl_v2.sh 06b full 3 &
+wait
+```
+
+Results land under `results/cl_results_seq_videogames/${MODEL_SIZE}_${CAP}/` (parallel layout to `results/cl_results_seq_books/`).
 
 ---
 
@@ -255,14 +282,24 @@ D3 finetune (from D2 ckpt) → eval on D3→D4
 ```
 grlm_cl_exp/
 ├── setup.sh                        # 一键安装 (models + data + LlamaFactory)
-├── run_books_cl_v2.sh              # Baseline CL 链 (train + eval, 4 periods)
+├── run_books_cl_v2.sh              # Baseline CL 链 — Books (train + eval, 4 periods)
+├── run_videogames_cl_v2.sh         # Baseline CL 链 — Video Games
 ├── run_books_cl_routed.sh          # Routing CL 链 (sliding window + aux loss)
 ├── dispatch_all.sh                 # 7 GPU 并行跑所有 cap
 ├── dispatch_sequential.sh          # 单 GPU 顺序跑
+├── data_prep/                      # SID pipeline (raw Amazon → CL JSON), see data_prep/README.md
+│   ├── prepare_<ds>_data.py        # Amazon raw → raw_data/
+│   ├── s0_*.py                     # Embeddings + similarity
+│   ├── s1_*.py                     # LLM keyword summaries
+│   ├── s2_*.py / s3_*.py / s4_*.py # id2meta, TID assignment, CL data
+│   └── gen_h30_h40.py              # Generate extra history caps
 ├── routing/
 │   ├── config_patch.py             # Qwen3 per-layer attention 配置
 │   ├── aux_head.py                 # Auxiliary prediction head
-│   └── train_with_routing.py       # Monkey-patch LlamaFactory trainer
+│   ├── train_with_routing.py       # Sliding window + aux loss trainer
+│   ├── pkm/                        # PKM memory module (experimental)
+│   ├── pkm_module.py               # PKM injection into Qwen3
+│   └── train_with_pkm.py           # PKM training script
 ├── eval/
 │   ├── s5_books_cl_eval_seq.py     # Sequential eval (Recall + NDCG, per-group)
 │   └── recompute_cl_recall.py      # 从已有结果重算 metrics
